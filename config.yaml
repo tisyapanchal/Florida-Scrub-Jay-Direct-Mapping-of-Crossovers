@@ -1,0 +1,47 @@
+# Config for the FSJ recombination-mapping pipeline (workflow/Snakefile).
+# All paths are relative to the repo root (the Snakefile pins the working
+# directory there regardless of where `snakemake` is invoked from).
+
+# Chromosomes to run the pipeline on. Each value must match the label used in
+# the real tree-sequence filenames, the linkage-map "Scaffold" column, and
+# (via gff_chrom_pattern below) the GFF's seqid column — e.g. "1", "1A", "Z".
+# Only chromosome 1's tree sequence is present in this repo right now; add a
+# chromosome here once notebooks/<chrom>.shapeit5.hmm.v3.pedigree.trees
+# exists for it (or point real_trees_pattern below wherever you keep them).
+chromosomes:
+  - "1"
+  # - "2"
+  # - "1A"
+  # - "Z"
+
+# {chrom} is substituted with each entry in `chromosomes` above.
+real_trees_pattern: "notebooks/{chrom}.shapeit5.hmm.v3.pedigree.trees"
+ped_path: "notebooks/fsj-anon.ped"
+gff_path: "notebooks/Merged_Annotation_FSJgenome_July2024_FINAL.braker.interpro.gff3"
+linkage_map_path: "notebooks/FSJLinkageMap_LOD3LOD5_SexSpecificMap_Anon.tsv"
+
+# How a chromosome label maps onto the GFF's seqid column (Chr1, Chr1A, ChrZ, ...).
+gff_chrom_pattern: "Chr{chrom}"
+
+results_dir: "results"
+
+# Null model (msprime fixed-pedigree simulation)
+null_recombination_rate: 1.5e-8
+n_null_simulations: 100
+
+# Full/half-sibling phasing-error filters
+sibling_window_bp: 10000
+half_sibling_window_bp: 1000
+half_sibling_min_share: 2
+
+# Nearest-neighbour cutoff (bp) used ONLY as a fallback, if a chromosome's own
+# breakpoint-spacing distribution has no clear bimodal antimode for the
+# pipeline to detect automatically. This is the value chromosome 1 resolved
+# to via that automatic detection.
+default_nearest_neighbor_cutoff_bp: 258100
+
+# Individuals to generate diagnostic IBD-tract plots for, per chromosome.
+# This is NOT run for all 2,602 individuals by default — leave empty ([])
+# to skip the ibd_plots rule entirely.
+ibd_plot_individuals:
+  - "FSJ3046"
