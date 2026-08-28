@@ -533,8 +533,9 @@ def breakpoint_distance_table(bps_by_node, nodes_meta, chrom_length):
                 "fsj_id": fsj, "node": int(node), "position_Mb": round(p / 1e6, 2),
                 "dist_left_bp": round(l), "dist_right_bp": r, "nearest_bp": n,
             })
-    df = pd.DataFrame(rows).sort_values(["fsj_id", "node"])
-    return df.reset_index(drop=True)
+        df = pd.DataFrame(rows, columns=["fsj_id", "node", "position_Mb",
+                                     "dist_left_bp", "dist_right_bp", "nearest_bp"])
+        return df.sort_values(["fsj_id", "node"]).reset_index(drop=True)
 
 
 def find_antimode_cutoff(nearest_bp, bins=80, smooth_window=7, peak_floor_frac=0.02):
