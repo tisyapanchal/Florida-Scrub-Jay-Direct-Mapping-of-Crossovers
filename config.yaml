@@ -15,7 +15,7 @@ chromosomes:
   # - "Z"
 
 # {chrom} is substituted with each entry in `chromosomes` above.
-real_trees_pattern: "notebooks/{chrom}.shapeit5.hmm.v3.pedigree.trees"
+real_trees_pattern: "notebooks/{chrom}.shapeit5.hmm.pedigree.trees"
 ped_path: "notebooks/fsj-anon.ped"
 gff_path: "notebooks/Merged_Annotation_FSJgenome_July2024_FINAL.braker.interpro.gff3"
 linkage_map_path: "notebooks/FSJLinkageMap_LOD3LOD5_SexSpecificMap_Anon.tsv"
