@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import tskit
 
-from common import build_mareymap, is_maternal
+from common import build_mareymap, informative_nodes, is_maternal
 
 chrom = snakemake.wildcards.chrom
 
@@ -17,10 +17,14 @@ real = tskit.load(snakemake.input.real_trees)
 chrom_len = int(real.sequence_length)
 
 filtered_table = pd.read_csv(snakemake.input.filtered)
-filtered = {node: g.position_bp.to_numpy() for node, g in filtered_table.groupby("node")}
+filtered = {int(node): g.position_bp.to_numpy()
+            for node, g in filtered_table.groupby("node")}
 
-mat = {n: b for n, b in filtered.items() if is_maternal(real, n) is True}
-pat = {n: b for n, b in filtered.items() if is_maternal(real, n) is False}
+# Every informative gamete counts toward the denominator, including the ones
+# whose breakpoints were all filtered out — those rows are absent from the CSV.
+nodes = informative_nodes(real)
+mat = {int(n): filtered.get(int(n), np.empty(0)) for n in nodes if is_maternal(real, n) is True}
+pat = {int(n): filtered.get(int(n), np.empty(0)) for n in nodes if is_maternal(real, n) is False}
 
 edges_f, cM_f = build_mareymap(mat, chrom_len)
 edges_m, cM_m = build_mareymap(pat, chrom_len)
