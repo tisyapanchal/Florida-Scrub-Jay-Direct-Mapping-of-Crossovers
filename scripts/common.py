@@ -189,6 +189,8 @@ def build_and_save_pedigree(ped_path, pedigree_out_path, sequence_length):
 # ---------------------------------------------------------------------------
 # Individual ID <-> tree-sequence ID lookups
 # ---------------------------------------------------------------------------
+_ID_MAP = None  # populated from config["id_map_path"] if present
+
 def get_id(ind):
     """FSJ pedigree ID for an individual, from either real (raw yaml-ish) or
     null/simulated (schema-decoded dict) metadata."""
@@ -200,8 +202,8 @@ def get_id(ind):
         if line.startswith("name:"):
             return line.split(":", 1)[1].strip()
         if line.startswith("individual_id:"):
-            return line.split(":", 1)[1].strip()
-    return None
+            return line.split(":", 1)[1].strip()n
+    return _ID_MAP.get(raw, raw) if _ID_MAP else raw
 
 
 def build_id_table(ts):
