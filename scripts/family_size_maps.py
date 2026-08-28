@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import tskit
 
-from common import breakpoint_distance_table, get_id, read_sibships
+from common import breakpoint_distance_table, get_id, informative_nodes, read_sibships
 
 chrom = snakemake.wildcards.chrom
 
@@ -20,8 +20,16 @@ _, sibgroups = read_sibships(snakemake.input.ped)
 id_to_ind = {get_id(ind): ind for ind in real.individuals()}
 
 filtered_table = pd.read_csv(snakemake.input.filtered)
-filtered = {node: g.position_bp.to_numpy() for node, g in filtered_table.groupby("node")}
-nodes_meta = {node: (g.fsj_id.iloc[0],) for node, g in filtered_table.groupby("node")}
+filtered_table = pd.read_csv(snakemake.input.filtered)
+filtered = {int(node): g.position_bp.to_numpy() for node, g in filtered_table.groupby("node")}
+
+# Gametes whose breakpoints were all filtered out are absent from the CSV but
+# still belong in the denominator.
+informative = {int(n): fsj for n, (fsj, _) in informative_nodes(real).items()}
+EMPTY = np.empty(0, dtype=int)
+
+nodes_meta = {int(node): (g.fsj_id.iloc[0],) for node, g in filtered_table.groupby("node")}
+nodes_meta.update({n: (fsj,) for n, fsj in informative.items() if n not in nodes_meta})
 
 # mutually exclusive bins, first-match-wins so shared boundaries (5, 10, 15, 20)
 # fall into the lower bucket only, never double-counted
@@ -41,8 +49,8 @@ for (father, mother), offspring in sibgroups.items():
         if fsj not in id_to_ind:
             continue
         for node in id_to_ind[fsj].nodes:
-            if node in filtered:
-                bps_by_size[label][node] = filtered[node]
+            if int(node) in informative:
+                bps_by_size[label][int(node)] = filtered.get(int(node), EMPTY)
 
 for label, d in bps_by_size.items():
     n_bp = sum(len(b) for b in d.values())
@@ -67,11 +75,11 @@ CENTERS = (EDGES[:-1] + EDGES[1:]) / 2
 
 
 def family_cumulative_marey(nodes):
-    nodes = [n for n in nodes if n in filtered]
+    nodes = [int(n) for n in nodes if int(n) in informative]
     n_gam = len(nodes)
     if n_gam == 0:
         return None
-    allpos = np.sort(np.concatenate([filtered[n] for n in nodes]).astype(int))
+    allpos = np.sort(np.concatenate([filtered.get(n, EMPTY) for n in nodes]).astype(int))
     counts, _ = np.histogram(allpos, bins=EDGES)
     return np.cumsum(counts / n_gam) * 100
 
@@ -81,7 +89,7 @@ def family_nodes(offspring):
     for fsj in offspring:
         if fsj not in id_to_ind:
             continue
-        nodes.extend(n for n in id_to_ind[fsj].nodes if n in filtered)
+        nodes.extend(int(n) for n in id_to_ind[fsj].nodes if int(n) in informative)
     return nodes
 
 
