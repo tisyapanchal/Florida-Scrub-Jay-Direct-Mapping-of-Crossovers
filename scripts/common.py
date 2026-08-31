@@ -565,11 +565,14 @@ def breakpoint_distance_table(bps_by_node, nodes_meta, chrom_length):
         return df.sort_values(["fsj_id", "node"]).reset_index(drop=True)
 
 
-def find_antimode_cutoff(nearest_bp, bins=80, smooth_window=7, peak_floor_frac=0.02):
-    """Find the antimode (valley) of the bimodal nearest-neighbour-distance
-    distribution, separating "true" spacing from clustered/artifactual
-    breakpoints. Returns the cutoff in bp, or None if no clear bimodal
-    structure is found (falls back to no distance filtering upstream)."""
+def find_antimode_cutoff(nearest_bp, bins=80, smooth_window=7, peak_floor_frac=0.02,
+                         lo_bp=1e4, hi_bp=None, min_depth=0.6):
+    """Antimode of the bimodal nearest-neighbour-distance distribution.
+
+    The valley must fall within [lo_bp, hi_bp] and sit at least (1 - min_depth)
+    below the shallower of its two flanking peaks; otherwise there is no
+    credible bimodal structure and None is returned so the caller falls back.
+    """
     d = nearest_bp[nearest_bp > 0]
     if len(d) == 0:
         return None
@@ -582,9 +585,15 @@ def find_antimode_cutoff(nearest_bp, bins=80, smooth_window=7, peak_floor_frac=0
     if len(prom) < 2:
         return None
     lo, hi = prom[0], prom[-1]
-    valley = lo + np.argmin(smooth[lo:hi])
-    return float(10 ** centers[valley])
-
+    if hi <= lo + 1:
+        return None
+    valley = lo + int(np.argmin(smooth[lo:hi]))
+    cutoff = float(10 ** centers[valley])
+    if cutoff < lo_bp or (hi_bp is not None and cutoff > hi_bp):
+        return None
+    if smooth[valley] > min_depth * min(smooth[lo], smooth[hi]):
+        return None
+    return cutoff
 
 def nearest_neighbor_filter(bps_by_node, min_dist, chrom_length):
     kept = {}
