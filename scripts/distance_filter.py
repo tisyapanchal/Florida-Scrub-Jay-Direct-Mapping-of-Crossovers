@@ -33,11 +33,10 @@ bp_table.insert(0, "chrom", chrom)
 bp_table.to_csv(snakemake.output.dist_table, index=False)
 print(f"[chr{chrom}] {len(bp_table)} breakpoints across {bp_table.fsj_id.nunique()} individuals")
 
-cutoff = find_antimode_cutoff(bp_table["nearest_bp"].to_numpy())
+cutoff = find_antimode_cutoff(bp_table["nearest_bp"].to_numpy(), hi_bp=0.10 * chrom_length)
 used_default = cutoff is None
 if used_default:
-    cutoff = default_min_dist
-    print(f"[chr{chrom}] no clear bimodal antimode found; using configured default_min_dist={cutoff:.0f} bp")
+    cutoff = max(1e4, 0.002 * chrom_length)
 else:
     print(f"[chr{chrom}] antimode threshold: {cutoff / 1e3:.1f} kb")
 
