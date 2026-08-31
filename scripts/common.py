@@ -189,21 +189,46 @@ def build_and_save_pedigree(ped_path, pedigree_out_path, sequence_length):
 # ---------------------------------------------------------------------------
 # Individual ID <-> tree-sequence ID lookups
 # ---------------------------------------------------------------------------
-_ID_MAP = None  # populated from config["id_map_path"] if present
+_ID_MAP_PATH = os.environ.get("FSJ_ID_MAP", "notebooks/id_crosswalk.tsv")
+_ID_MAP = None
+
+
+def _id_map():
+    """Original field IDs (H####/ABS###) -> anonymized FSJ#### IDs, when a
+    crosswalk is present. Empty when there isn't one, so already-anonymized
+    IDs pass straight through."""
+    global _ID_MAP
+    if _ID_MAP is None:
+        _ID_MAP = {}
+        if os.path.exists(_ID_MAP_PATH):
+            with open(_ID_MAP_PATH) as f:
+                for line in f:
+                    p = line.rstrip("\n").split("\t")
+                    if len(p) == 2 and p[0]:
+                        _ID_MAP[p[0]] = p[1]
+    return _ID_MAP
+
 
 def get_id(ind):
     """FSJ pedigree ID for an individual, from either real (raw yaml-ish) or
-    null/simulated (schema-decoded dict) metadata."""
+    null/simulated (schema-decoded dict) metadata, translated through the
+    ID crosswalk when one is present."""
     md = ind.metadata
+    raw = None
     if isinstance(md, dict):
-        return md.get("name") or md.get("individual_id") or md.get("id")
-    s = md.decode("utf-8", "replace") if isinstance(md, (bytes, bytearray)) else str(md)
-    for line in s.splitlines():
-        if line.startswith("name:"):
-            return line.split(":", 1)[1].strip()
-        if line.startswith("individual_id:"):
-            return line.split(":", 1)[1].strip()n
-    return _ID_MAP.get(raw, raw) if _ID_MAP else raw
+        raw = md.get("name") or md.get("individual_id") or md.get("id")
+    else:
+        s = md.decode("utf-8", "replace") if isinstance(md, (bytes, bytearray)) else str(md)
+        for line in s.splitlines():
+            if line.startswith("name:"):
+                raw = line.split(":", 1)[1].strip()
+                break
+            if line.startswith("individual_id:"):
+                raw = line.split(":", 1)[1].strip()
+                break
+    if raw is None:
+        return None
+    return _id_map().get(raw, raw)
 
 
 def build_id_table(ts):
